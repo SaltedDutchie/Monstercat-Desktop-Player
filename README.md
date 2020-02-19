@@ -4,7 +4,7 @@ Please report any issues you have in the issues tab above!
 
 Depending on the specific directory the program is placed in, it automatically closes on launch. This is due to the directory being proteced. To fix this issue, run the program in administrator mode.
 
-##In progress
+## In progress
 Detect whether song is paused or not and change Discord RPC / text file to display no song.
 
 ## Details
