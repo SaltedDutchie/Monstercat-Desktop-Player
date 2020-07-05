@@ -22,8 +22,8 @@ namespace Monstecat_Desktop_Player
         public ChromiumWebBrowser browser;
         public DiscordRpcClient discord;
 
-        public string currentSong;
-
+        public string currentSong = "";
+        public string currentSongTime = "0";
         public DateTime songStart = DateTime.UtcNow;
 
         public void InitBrowser()
@@ -68,29 +68,43 @@ namespace Monstecat_Desktop_Player
                 {
                     if (browser.IsBrowserInitialized)
                     {
-                        var songTitle = await browser.GetMainFrame().EvaluateScriptAsync("(function() { return document.getElementsByClassName('scroll-title')[0].innerText; })();", null);
+                        var songTitle = await browser.GetMainFrame()
+                            .EvaluateScriptAsync("(function() { return document.getElementsByClassName('scroll-title')[0].innerText; })();", null);
+                        var songTime = await browser.GetMainFrame()
+                            .EvaluateScriptAsync("(function() { return player.audio.currentTime; })();");
 
-                        string txtPath = Environment.CurrentDirectory;
-
-                        using (StreamWriter outputFile = new StreamWriter(Path.Combine(txtPath, "SongText.txt")))
+                        try
                         {
-                            try
+                            if (songTime.Result.ToString() != currentSongTime)
                             {
                                 if (currentSong != songTitle.Result.ToString())
                                 {
-                                    outputFile.Write(songTitle.Result.ToString());
                                     currentSong = songTitle.Result.ToString();
                                     songStart = DateTime.UtcNow;
                                 }
+
+                                currentSongTime = songTime.Result.ToString();
                             }
-                            catch
+                            else
                             {
-                                Console.WriteLine("Error grabbing song text. Probably hasn't loaded yet.");
+                                currentSong = "";
+                                songStart = DateTime.UtcNow;
                             }
+                        }
+                        catch
+                        {
+                            currentSong = "";
+                            songStart = DateTime.UtcNow;
+                            Console.WriteLine("Error grabbing song text. Probably hasn't loaded yet.");
+                        }
+                        
+                        using (StreamWriter outputFile = new StreamWriter(Path.Combine(Environment.CurrentDirectory, "SongText.txt")))
+                        {
+                            outputFile.Write(currentSong);
                         }
                     }
 
-                    Thread.Sleep(500);
+                    Thread.Sleep(2500);
                 }
             });
 
@@ -100,20 +114,35 @@ namespace Monstecat_Desktop_Player
                 {
                     if (discord.IsInitialized)
                     {
-                        discord.SetPresence(new RichPresence()
+                        if (currentSong != "")
                         {
-                            Details = "Now Playing",
-                            State = currentSong,
-                            Timestamps = new Timestamps()
+                            discord.SetPresence(new RichPresence()
                             {
-                                Start = songStart
-                            },
-                            Assets = new Assets()
+                                Details = "Now Playing",
+                                State = currentSong,
+                                Timestamps = new Timestamps()
+                                {
+                                    Start = songStart
+                                },
+                                Assets = new Assets()
+                                {
+                                    LargeImageKey = "monstercat_logo_trans",
+                                    LargeImageText = "Monstercat"
+                                }
+                            });   
+                        }
+                        else
+                        {
+                            discord.SetPresence(new RichPresence()
                             {
-                                LargeImageKey = "monstercat_logo_trans",
-                                LargeImageText = "Monstercat"
-                            }
-                        });
+                                Details = "Nothing Playing",
+                                Assets = new Assets()
+                                {
+                                    LargeImageKey = "monstercat_logo_trans",
+                                    LargeImageText = "Monstercat"
+                                }
+                            });
+                        }
                     }
 
                     Thread.Sleep(15000);
