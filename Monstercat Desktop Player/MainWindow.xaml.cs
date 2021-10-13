@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Windows;
@@ -7,12 +6,14 @@ using System.Windows.Controls;
 
 using CefSharp;
 using CefSharp.Wpf;
+using DiscordRPC;
 
 namespace Monstercat_Desktop_Player
 {
     public partial class MainWindow : Window
     {
         public ChromiumWebBrowser browser;
+        public DiscordRpcClient discord;
 
         public string currentSong = "Init";
 
@@ -27,10 +28,17 @@ namespace Monstercat_Desktop_Player
             MainGrid.Children.Add(browser);
         }
 
+        public void InitDiscord()
+        {
+            discord = new DiscordRpcClient("679284045141770250");
+            discord.Initialize();
+        }
+
         public MainWindow()
         {
             InitializeComponent();
             InitBrowser();
+            InitDiscord();
 
             Thread songThread = new Thread(() =>
             {
@@ -62,7 +70,45 @@ namespace Monstercat_Desktop_Player
                 }
             });
 
+            Thread discordThread = new Thread(() =>
+            {
+                while (true)
+                {
+                    if (discord.IsInitialized)
+                    {
+                        if (currentSong != "")
+                        {
+                            discord.SetPresence(new RichPresence()
+                            {
+                                Details = "Now Playing",
+                                State = currentSong,
+                                Assets = new Assets()
+                                {
+                                    LargeImageKey = "monstercat_logo_trans",
+                                    LargeImageText = "Monstercat"
+                                }
+                            });
+                        }
+                        else
+                        {
+                            discord.SetPresence(new RichPresence()
+                            {
+                                Details = "Nothing Playing",
+                                Assets = new Assets()
+                                {
+                                    LargeImageKey = "monstercat_logo_trans",
+                                    LargeImageText = "Monstercat"
+                                }
+                            });
+                        }
+                    }
+
+                    Thread.Sleep(15000);
+                }
+            });
+
             songThread.Start();
+            discordThread.Start();
         }
     }
 }
